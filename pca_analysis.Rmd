@@ -1,0 +1,204 @@
+---
+pdf_document: default
+author: "Mohammed sharif"
+title: "Principal Component Analysis (PCA)"
+output: pdf_document
+html_notebook: default
+---
+
+# Principal Component Analysis (PCA)
+
+This assignment focuses on conducting a Principal Component Analysis (PCA) on a given dataset. The analysis is performed in two parts:
+
+1.  First, a manual PCA process is conducted without using built-in functions like `prcomp` to gain a deeper understanding of each step involved in PCA, including standardization, covariance matrix calculation, eigen decomposition, and projection of data onto a new basis.
+
+2.  In the second part, the `prcomp` function is used to compare the results, followed by advanced visualization techniques to provide a more comprehensive view of the data. Additional dimensionality reduction techniques, such as clustering using K-Means, are included to further strengthen the analysis.
+
+## Load necessary libraries
+
+```{r}
+if (!require("readr")) { 
+    install.packages("readr")
+    library(readr)
+}
+if (!require("ggplot2")) {
+    install.packages("ggplot2")
+    library(ggplot2)
+}
+if (!require("ggbiplot")) {
+    devtools::install_github("vqv/ggbiplot")
+    library(ggbiplot)
+}
+```
+
+## Loading the CSV file and centering the data
+
+```{r}
+data <- read.csv('anonymous-data.csv')
+head(data)
+
+
+```
+
+#### Removing non-numeric columns and Standardize the data for computing the covariance matrix
+
+```{r}
+numeric_data = data[,2:dim(data)[2]]
+head(numeric_data)
+```
+
+## Data Standardization Explanation
+
+### Standardization ensures all variables have equal weight, preventing those with larger scales from dominating the PCA.
+
+```{r}
+standardized_data <- scale(numeric_data)
+```
+
+## Covariance Matrix
+
+### The covariance matrix shows how much variables vary together, helping identify directions of maximum variance.
+
+```{r}
+cov_matrix <- cov(standardized_data)
+print(cov_matrix)
+```
+
+## Eigen decomposition of the covariance matrix
+
+```{r}
+eig <- eigen(cov_matrix)
+eigenvalues <- eig$values
+eigenvectors <- eig$vectors
+```
+
+### printing the eiganvalues and its vectors
+
+```{r}
+for (i in 1:length(eigenvalues)) {
+  cat("\nEigenvalue : ", eigenvalues[i], "\n")
+  cat("Corresponding eigenvectors\n ",eigenvectors[,i], "\n")
+}
+
+```
+
+### Sort eigenvalues and eigenvectors in descending order
+
+```{r}
+sorted_indices <- order(eigenvalues, decreasing = TRUE)
+sorted_eigenvalues <- eigenvalues[sorted_indices]
+sorted_eigenvectors <- eigenvectors[, sorted_indices]
+```
+
+### printing the sorted eiganvalues and its vectors
+
+```{r}
+for (i in 1:length(sorted_eigenvalues)) {
+  cat("\nEigenvalue : ", sorted_eigenvalues[i], "\n")
+  cat("Corresponding eigenvectors\n ",sorted_eigenvectors[,i], "\n")
+}
+```
+
+### Form the matrix of change of basis
+
+Each column in this matrix represents a principal component, which is a direction in the feature space that explains the maximum variance in the data. The first column corresponds to the first principal component, and so on.
+
+```{r}
+change_of_basis_matrix <- sorted_eigenvectors
+head(change_of_basis_matrix)
+```
+
+### Project the data onto the new basis (new representation in principal component space)
+
+```{r}
+pca_transformed_data <- standardized_data %*% change_of_basis_matrix
+
+# Convert the transformed data to a data frame
+pca_transformed_data <- as.data.frame(pca_transformed_data)
+colnames(pca_transformed_data) <- paste0("PC", 1:ncol(pca_transformed_data))
+
+# Inspect the transformed data
+head(pca_transformed_data)
+```
+
+# Variance Explained Plot
+
+## Plot the cumulative variance explained by the principal components
+
+```{r}
+explained_variance <- sorted_eigenvalues / sum(sorted_eigenvalues)
+cumulative_variance <- cumsum(explained_variance)
+```
+
+### Plot cumulative variance to show how many components are needed to explain most of the variance
+
+Interpretation: From the plot, we can observe how many principal components are required to explain a significant portion of the variance (usually around 90%). This allows us to decide how many components to keep for further analysis.
+
+```{r}
+plot(cumulative_variance, type = "b", xlab = "Principal Component", ylab = "Cumulative Variance Explained")
+```
+
+```{r}
+threshold <- 0.9  # Set your threshold for explained variance (90%)
+components_needed <- which(cumulative_variance >= threshold)[1]
+cat("\nNumber of components required to explain at least 90% of variance: ", components_needed, "\n")
+
+```
+
+# Part 2: PCA using prcomp
+
+```{r}
+# Perform PCA using prcomp
+pca_result <- prcomp(numeric_data, scale. = TRUE)
+
+# Summary of the PCA
+summary(pca_result)
+# Load necessary libraries
+
+# Plot the PCA biplot
+ggbiplot(pca_result)
+
+```
+
+## Cumulative variance plot using prcomp results
+
+```{r}
+explained_variance_prcomp <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+
+cumulative_variance_prcomp <- cumsum(explained_variance_prcomp)
+
+# Plot
+plot(cumulative_variance_prcomp, xlab = "Principal Component", ylab = "Cumulative Proportion of Variance Explained", type = "b")
+
+
+```
+
+## Comparison between manual PCA and prcomp.
+
+Interpretation : The red line represents the manually calculated PCA, and the blue line shows the results from prcomp. If the two lines are close, it confirms that the manual PCA is implemented correctly.
+
+```{r}
+# Plot the comparison between manual PCA and prcomp results
+plot(cumulative_variance_prcomp, type = "b", xlab = "Principal Component", ylab = "Cumulative Variance Explained by prcomp", col = "blue", main = "Cumulative Variance Comparison")
+lines(cumulative_variance, type = "b", col = "red")
+legend("bottomright", legend = c("prcomp", "Manual"), col = c("blue", "red"), lty = 1)
+```
+
+## K-Means Clustering on PCA-Transformed Data
+
+set.seed(123) ensures consistent clustering results by fixing the randomness in the K-means algorithm. The K-means clustering is performed on the top principal components that capture the most variance, specifying 3 clusters. The plot visualizes these clusters on the first two principal components (PC1, PC2), with each cluster distinguished by a different color for clearer interpretation.
+
+```{r}
+set.seed(123)  # For reproducibility
+kmeans_result <- kmeans(pca_transformed_data[, 1:components_needed], centers = 3)  # Assuming 3 clusters
+
+# Plot the clusters
+ggplot(pca_transformed_data, aes(x = PC1, y = PC2, color = as.factor(kmeans_result$cluster))) +
+  geom_point() +
+  labs(title = "K-means Clustering on PCA-Transformed Data", x = "PC1", y = "PC2", color = "Cluster")
+
+```
+
+### Conclusion
+
+In this analysis, we performed a Principal Component Analysis (PCA) both manually and using the `prcomp` function to reduce the dimensionality of the dataset and identify key patterns. We observed how the majority of the variance in the data is captured by the first few principal components, allowing us to simplify the data without losing significant information. Additionally, we applied K-means clustering on the PCA-transformed data, revealing distinct groupings within the dataset, and visualized these clusters using the first two principal components. This comprehensive approach not only helped in understanding the underlying structure of the data but also demonstrated the effectiveness of PCA in reducing complexity while retaining essential patterns.

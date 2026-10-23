@@ -3,8 +3,6 @@
 
 **Exploring dimensionality reduction through linear algebra, statistical analysis, and unsupervised learning.**
 
-![R](https://img.shields.io/badge/Language-R-276DC3?logo=r&logoColor=white) ![R Markdown](https://img.shields.io/badge/Notebook-R%20Markdown-536878) ![Methods](https://img.shields.io/badge/Methods-PCA%20%7C%20K--Means-237A57)
-:::
 
 ## Overview
 

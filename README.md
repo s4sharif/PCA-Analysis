@@ -1,4 +1,3 @@
-::: {align="center"}
 # Principal Component Analysis & K-Means Clustering in R
 
 **Exploring dimensionality reduction through linear algebra, statistical analysis, and unsupervised learning.**
